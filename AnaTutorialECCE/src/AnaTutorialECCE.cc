@@ -21,7 +21,7 @@
 #include <trackbase_historic/SvtxTrackMap.h>
 #include <trackbase_historic/SvtxVertex.h>
 #include <trackbase_historic/SvtxVertexMap.h>
-
+#include <trackbase_historic/SvtxTrack_FastSim.h>
 /// Truth evaluation includes
 #include <g4eval/JetEvalStack.h>
 #include <g4eval/SvtxEvalStack.h>
@@ -58,7 +58,7 @@ using namespace std;
 
 /**
  * This class demonstrates the construction and use of an analysis module 
- * within the sPHENIX Fun4All framework. It is intended to show how to 
+ * within the EIC Fun4All framework. It is intended to show how to 
  * obtain physics objects from the analysis tree, and then write them out
  * to a ROOT tree and file for further offline analysis.  
  */
@@ -352,40 +352,27 @@ void AnaTutorialECCE::getPHG4Truth(PHCompositeNode *topNode)
 
 /**
  * This method gets the tracks as reconstructed from the tracker. It also
- * compares the reconstructed track to its truth track counterpart as determined
- * by the 
+ * compares the reconstructed track to its truth track.
  */
 void AnaTutorialECCE::getTracks(PHCompositeNode *topNode)
 {
-  /// SVTX tracks node
-  SvtxTrackMap *trackmap = findNode::getClass<SvtxTrackMap>(topNode, "SvtxTrackMap");
+  /// Tracks node
+  SvtxTrackMap *trackmap = findNode::getClass<SvtxTrackMap>(topNode, "TrackMap");
 
   if (!trackmap)
   {
     cout << PHWHERE
-         << "SvtxTrackMap node is missing, can't collect tracks"
+         << "TrackMap node is missing, can't collect tracks"
          << endl;
     return;
   }
-
-  /// EvalStack for truth track matching
-  if(!m_svtxEvalStack)
-    {
-      m_svtxEvalStack = new SvtxEvalStack(topNode);
-      m_svtxEvalStack->set_verbosity(Verbosity());
-    }
-  
-  m_svtxEvalStack->next_event(topNode);
-
-  /// Get the track evaluator
-  SvtxTrackEval *trackeval = m_svtxEvalStack->get_track_eval();
 
   /// Get the range for primary tracks
   PHG4TruthInfoContainer *truthinfo = findNode::getClass<PHG4TruthInfoContainer>(topNode, "G4TruthInfo");
 
   if (Verbosity() > 1)
   {
-    cout << "Get the SVTX tracks" << endl;
+    cout << "Get the tracks" << endl;
   }
   for (SvtxTrackMap::Iter iter = trackmap->begin();
        iter != trackmap->end();
@@ -417,9 +404,34 @@ void AnaTutorialECCE::getTracks(PHCompositeNode *topNode)
     m_tr_z = track->get_z();
 
     /// Get truth track info that matches this reconstructed track
-    PHG4Particle *truthtrack = trackeval->max_truth_particle_by_nclusters(track);
-    m_truth_is_primary = truthinfo->is_primary(truthtrack);
+    PHG4Particle *truthtrack = nullptr;
+    
+    /// Ensure that the reco track is a fast sim track
+    SvtxTrack_FastSim *temp = dynamic_cast<SvtxTrack_FastSim*>(iter->second);
+    if(!temp)
+      {
+	if(Verbosity() > 0)
+	  std::cout << "Skipping non fast track sim object..." << std::endl;
+	continue;
+      }
 
+    PHG4TruthInfoContainer::Range range = truthinfo->GetPrimaryParticleRange();
+
+    /// Loop over the G4 truth (stable) particles
+    for (PHG4TruthInfoContainer::ConstIterator iter = range.first;
+	 iter != range.second;
+	 ++iter)
+      {
+	/// Get this truth particle
+        PHG4Particle *truth = iter->second;
+	if((truth->get_track_id() - temp->get_truth_track_id()) == 0)
+	  {
+	    truthtrack = truth;
+	  }
+      }
+
+    m_truth_is_primary = truthinfo->is_primary(truthtrack);
+  
     m_truthtrackpx = truthtrack->get_px();
     m_truthtrackpy = truthtrack->get_py();
     m_truthtrackpz = truthtrack->get_pz();
@@ -431,7 +443,7 @@ void AnaTutorialECCE::getTracks(PHCompositeNode *topNode)
     m_truthtrackphi = atan(m_truthtrackpy / m_truthtrackpx);
     m_truthtracketa = atanh(m_truthtrackpz / m_truthtrackp);
     m_truthtrackpid = truthtrack->get_pid();
-
+  
     m_tracktree->Fill();
   }
 }
@@ -447,14 +459,14 @@ void AnaTutorialECCE::getTruthJets(PHCompositeNode *topNode)
   }
 
   /// Get the truth jet node
-  JetMap *truth_jets = findNode::getClass<JetMap>(topNode, "AntiKt_Truth_r04");
+  JetMap *truth_jets = findNode::getClass<JetMap>(topNode, "AntiKt_Truth_r05");
 
   /// Get reco jets associated to truth jets to study e.g. jet efficiencies
-  JetMap *reco_jets = findNode::getClass<JetMap>(topNode, "AntiKt_Tower_r04");
+  JetMap *reco_jets = findNode::getClass<JetMap>(topNode, "AntiKt_Tower_r05");
   if(!m_jetEvalStack)
     {
-      m_jetEvalStack = new JetEvalStack(topNode, "AntiKt_Tower_r04",
-					"AntiKt_Truth_r04");
+      m_jetEvalStack = new JetEvalStack(topNode, "AntiKt_Tower_r05",
+					"AntiKt_Truth_r05");
     }
   m_jetEvalStack->next_event(topNode);
   JetTruthEval *trutheval = m_jetEvalStack->get_truth_eval();
@@ -576,14 +588,14 @@ void AnaTutorialECCE::getTruthJets(PHCompositeNode *topNode)
 void AnaTutorialECCE::getReconstructedJets(PHCompositeNode *topNode)
 {
   /// Get the reconstructed tower jets
-  JetMap *reco_jets = findNode::getClass<JetMap>(topNode, "AntiKt_Tower_r04");
+  JetMap *reco_jets = findNode::getClass<JetMap>(topNode, "AntiKt_Tower_r05");
   /// Get the truth jets
-  JetMap *truth_jets = findNode::getClass<JetMap>(topNode, "AntiKt_Truth_r04");
+  JetMap *truth_jets = findNode::getClass<JetMap>(topNode, "AntiKt_Truth_r05");
 
   if(!m_jetEvalStack)
     {
-      m_jetEvalStack = new JetEvalStack(topNode, "AntiKt_Tower_r04",
-					"AntiKt_Truth_r04");
+      m_jetEvalStack = new JetEvalStack(topNode, "AntiKt_Tower_r05",
+					"AntiKt_Truth_r05");
     }
   m_jetEvalStack->next_event(topNode);
   JetRecoEval *recoeval = m_jetEvalStack->get_reco_eval();
@@ -706,13 +718,13 @@ void AnaTutorialECCE::getReconstructedJets(PHCompositeNode *topNode)
  * This method gets clusters from the EMCal and stores them in a tree. It
  * also demonstrates how to get trigger emulator information. Clusters from
  * other containers can be obtained in a similar way (e.g. clusters from
- * the IHCal, etc.)
+ * the HCal, etc.)
  */
 void AnaTutorialECCE::getEMCalClusters(PHCompositeNode *topNode)
 {
   /// Get the raw cluster container
   /// Note: other cluster containers exist as well. Check out the node tree when
-  /// you run a simulation
+  /// you run a simulation, for example look for the node CLUSTER_EEMC
   RawClusterContainer *clusters = findNode::getClass<RawClusterContainer>(topNode, "CLUSTER_CEMC");
 
   if (!clusters)
@@ -773,6 +785,9 @@ void AnaTutorialECCE::getEMCalClusters(PHCompositeNode *topNode)
     m_clustheta = E_vec_cluster.getTheta();
     m_cluspt = E_vec_cluster.perp();
     m_clusphi = E_vec_cluster.getPhi();
+
+    m_phi_h->Fill(m_clusphi);
+    m_eta_phi_h->Fill(m_clusphi, m_cluseta);
 
     if (m_cluspt < m_mincluspt)
       continue;

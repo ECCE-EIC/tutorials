@@ -19,12 +19,10 @@ class GlobalVertex;
 class PHHepMCGenEventMap;
 class JetEvalStack;
 class JetRecoEval;
-class SvtxTrackEval;
 class PHG4TruthInfoContainer;
 class PHHepMCGenEvent;
 class CaloTriggerInfo;
 class JetTruthEval;
-class SvtxEvalStack;
 class JetEvalStack;
 
 /// Definition of this analysis module class
@@ -95,7 +93,6 @@ class AnaTutorialECCE : public SubsysReco
   TH1 *m_phi_h;
   TH2 *m_eta_phi_h;
 
-  SvtxEvalStack *m_svtxEvalStack = nullptr;
   JetEvalStack *m_jetEvalStack = nullptr;
 
   /// Methods for grabbing the data
