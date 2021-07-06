@@ -7,7 +7,7 @@
 #include <G4_BlackHole.C>
 #include <G4_CEmc_Albedo.C>
 #include <G4_CEmc_Spacal.C>
-#include <G4_EPD.C>
+//#include <G4_EPD.C>
 #include <G4_FEMC.C>
 #include <G4_HcalIn_ref.C>
 #include <G4_HcalOut_ref.C>
@@ -63,7 +63,7 @@ void G4Init()
   if (Enable::HCALOUT) HCalOuterInit();
   if (Enable::PLUGDOOR) PlugDoorInit();
   if (Enable::FEMC) FEMCInit();
-  if (Enable::EPD) EPDInit();
+  //if (Enable::EPD) EPDInit();
   if (Enable::USER) UserInit();
   if (Enable::BLACKHOLE) BlackHoleInit();
 }
@@ -122,7 +122,7 @@ int G4Setup()
   if (Enable::HCALOUT) radius = HCalOuter(g4Reco, radius, 4);
   if (Enable::PLUGDOOR) PlugDoor(g4Reco);
   if (Enable::FEMC) FEMCSetup(g4Reco);
-  if (Enable::EPD) EPD(g4Reco);
+  //if (Enable::EPD) EPD(g4Reco);
   if (Enable::USER) UserDetector(g4Reco);
 
 
