@@ -47,14 +47,14 @@ In the event that the macro does not work, you should look at the default macro 
 In the event that the macros do not work, that is because they have become out of sync with the main macros repository. In the Fun4All macro that you want to run, add the following to the header files:
 
 ```
-#include <anatutorial/AnaTutorial.h>
-R__LOAD_LIBRARY(libanatutorial.so)
+#include <anatutorialecce/AnaTutorialECCE.h>
+R__LOAD_LIBRARY(libanatutorialecce.so)
 ```
 
 and add the following after the line `if (Enable::USER) UserAnalysisInit();`
 
 ```
-AnaTutorial *anaTutorial = new AnaTutorial("anaTutorial", outputroot + "_anaTutorial.root");
+AnaTutorialECCE *anaTutorial = new AnaTutorialECCE("anaTutorial", outputroot + "_anaTutorial.root");
 anaTutorial->setMinJetPt(3.);
 anaTutorial->Verbosity(0);
 anaTutorial->analyzeTracks(true);

@@ -1,20 +1,19 @@
 #ifndef MACRO_FUN4ALLG4EICDETECTOR_C
 #define MACRO_FUN4ALLG4EICDETECTOR_C
 
-#include <anatutorial/AnaTutorial.h>
-
 #include <GlobalVariables.C>
 
 #include <DisplayOn.C>
 #include <G4Setup_EICDetector.C>
-#include <G4_Bbc.C>
 #include <G4_DSTReader_EICDetector.C>
+#include <G4_EventEvaluator.C>
 #include <G4_FwdJets.C>
 #include <G4_Global.C>
 #include <G4_Input.C>
-#include <G4_Jets.C>
 #include <G4_Production.C>
 #include <G4_User.C>
+
+#include <anatutorialecce/AnaTutorialECCE.h>
 
 #include <TROOT.h>
 #include <fun4all/Fun4AllDstOutputManager.h>
@@ -24,7 +23,7 @@
 #include <phool/recoConsts.h>
 
 R__LOAD_LIBRARY(libfun4all.so)
-R__LOAD_LIBRARY(libanatutorial.so)
+R__LOAD_LIBRARY(libanatutorialecce.so)
 
 int Fun4All_G4_EICDetector_AnaTutorial(
     const int nEvents = 1,
@@ -38,7 +37,7 @@ int Fun4All_G4_EICDetector_AnaTutorial(
   // Fun4All server
   //---------------
   Fun4AllServer *se = Fun4AllServer::instance();
-  se->Verbosity(0);
+  se->Verbosity(1);
   //Opt to print all random seed used for debugging reproducibility. Comment out to reduce stdout prints.
   //PHRandomSeed::Verbosity(1);
 
@@ -53,6 +52,14 @@ int Fun4All_G4_EICDetector_AnaTutorial(
   //===============
   // Input options
   //===============
+
+  // switching IPs by comment/uncommenting the following lines
+  // used for both beamline setting and for the event generator crossing boost
+  Enable::IP6 = true;
+  // Enable::IP8 = true;
+
+  // Setting proton beam pipe energy. If you don't know what to set here, leave it at 275 
+  Enable::HFARFWD_ION_ENERGY=275;
 
   // Either:
   // read previously generated g4-hits files, in this case it opens a DST and skips
@@ -75,10 +82,10 @@ int Fun4All_G4_EICDetector_AnaTutorial(
   //INPUTEMBED::listfile[0] = embed_input_file;
 
   // Use Pythia 8
-  //  Input::PYTHIA8 = true;
+  // Input::PYTHIA8 = true;
 
   // Use Pythia 6
-  //   Input::PYTHIA6 = true;
+  // Input::PYTHIA6 = true;
 
   // Use Sartre
   //   Input::SARTRE = true;
@@ -196,7 +203,7 @@ int Fun4All_G4_EICDetector_AnaTutorial(
     Input::ApplyEICBeamParameter(INPUTMANAGER::HepMCInputManager);
     // optional overriding beam parameters
     //INPUTMANAGER::HepMCInputManager->set_vertex_distribution_width(100e-4, 100e-4, 30, 0);  //optional collision smear in space, time
-                                                                                            //    INPUTMANAGER::HepMCInputManager->set_vertex_distribution_mean(0,0,0,0);//optional collision central position shift in space, time
+    //    INPUTMANAGER::HepMCInputManager->set_vertex_distribution_mean(0,0,0,0);//optional collision central position shift in space, time
     // //optional choice of vertex distribution function in space, time
     // INPUTMANAGER::HepMCInputManager->set_vertex_distribution_function(PHHepMCGenHelper::Gaus, PHHepMCGenHelper::Gaus, PHHepMCGenHelper::Gaus, PHHepMCGenHelper::Gaus);
     //! embedding ID for the event
@@ -213,6 +220,7 @@ int Fun4All_G4_EICDetector_AnaTutorial(
   if (Input::READEIC)
   {
     //! apply EIC beam parameter following EIC CDR
+    INPUTGENERATOR::EICFileReader->SetFirstEntry(skip);
     Input::ApplyEICBeamParameter(INPUTGENERATOR::EICFileReader);
   }
 
@@ -223,16 +231,16 @@ int Fun4All_G4_EICDetector_AnaTutorial(
   // Write the DST
   //======================
 
-  Enable::DSTOUT = false;
+  // Enable::DSTOUT = true;
   DstOut::OutputDir = outdir;
   DstOut::OutputFile = outputFile;
-  Enable::DSTOUT_COMPRESS = false;  // Compress DST files
+  Enable::DSTOUT_COMPRESS = true;  // Compress DST files
 
   //Option to convert DST to human command readable TTree for quick poke around the outputs
-//  Enable::DSTREADER = true;
+  // Enable::DSTREADER = true;
 
   // turn the display on (default off)
-  Enable::DISPLAY = false;
+  //  Enable::DISPLAY = true;
 
   //======================
   // What to run
@@ -242,42 +250,38 @@ int Fun4All_G4_EICDetector_AnaTutorial(
   //  Enable::OVERLAPCHECK = true;
   //  Enable::VERBOSITY = 1;
 
-  //  Enable::BBC = true;
-  Enable::BBCFAKE = true; // Smeared vtx and t0, use if you don't want real BBC in simulation
-
   // whether to simulate the Be section of the beam pipe
   Enable::PIPE = true;
-  // EIC beam pipe extension beyond the Be-section:
-  G4PIPE::use_forward_pipes = false;
+  // If need to disable EIC beam pipe extension beyond the Be-section:
+  // G4PIPE::use_forward_pipes = false;
   //EIC hadron far forward magnets and detectors. IP6 and IP8 are incompatible (pick either or);
-  Enable::HFARFWD_MAGNETS_IP6=true;
-  Enable::HFARFWD_VIRTUAL_DETECTORS_IP6=true;
-  Enable::HFARFWD_MAGNETS_IP8=false;
-  Enable::HFARFWD_VIRTUAL_DETECTORS_IP8=false;
+  Enable::HFARFWD_MAGNETS = true;
+  Enable::HFARFWD_VIRTUAL_DETECTORS = true;
 
   // gems
   Enable::EGEM = true;
   Enable::FGEM = true;
-  Enable::FGEM_ORIG = false; //5 forward gems; cannot be used with FST
+  // Enable::BGEM = true; // not yet defined in this model
+  Enable::RWELL = true;
   // barrel tracker
-  Enable::BARREL = false;
-  //G4BARREL::SETTING::BARRELV6=true;
+  Enable::BARREL = true;
   // fst
   Enable::FST = true;
-  G4FST::SETTING::FST_TPC = true;
-  // mvtx/tpc tracker
-  Enable::MVTX = true;
-  Enable::TPC = true;
-  //  Enable::TPC_ENDCAP = true;
+  // G4FST::SETTING::SUPPORTCYL = false; // if want to disable support
+
+  // TOFs
+  Enable::FTTL = true;
+  Enable::ETTL = true;
+  Enable::CTTL = true;
 
   Enable::TRACKING = true;
   Enable::TRACKING_EVAL = Enable::TRACKING && true;
   G4TRACKING::DISPLACED_VERTEX = false;  // this option exclude vertex in the track fitting and use RAVE to reconstruct primary and 2ndary vertexes
                                          // projections to calorimeters
-  G4TRACKING::PROJECTION_EEMC = false;
-  G4TRACKING::PROJECTION_CEMC = false;
-  G4TRACKING::PROJECTION_FEMC = false;
-  G4TRACKING::PROJECTION_FHCAL = false;
+  G4TRACKING::PROJECTION_EEMC = true;
+  G4TRACKING::PROJECTION_CEMC = true;
+  G4TRACKING::PROJECTION_FEMC = true;
+  G4TRACKING::PROJECTION_FHCAL = true;
 
   Enable::CEMC = true;
   //  Enable::CEMC_ABSORBER = true;
@@ -307,7 +311,9 @@ int Fun4All_G4_EICDetector_AnaTutorial(
 
   // EICDetector geometry - 'hadron' direction
   Enable::RICH = true;
-  Enable::AEROGEL = true;
+
+  // EICDetector geometry - 'electron' direction
+  Enable::mRICH = true;
 
   Enable::FEMC = true;
   //  Enable::FEMC_ABSORBER = true;
@@ -327,17 +333,19 @@ int Fun4All_G4_EICDetector_AnaTutorial(
   Enable::EEMC_CLUSTER = Enable::EEMC_TOWER && true;
   Enable::EEMC_EVAL = Enable::EEMC_CLUSTER && true;
 
-  Enable::PLUGDOOR = true;
+  Enable::EHCAL = true;
+  Enable::EHCAL_CELL = Enable::EHCAL && true;
+  Enable::EHCAL_TOWER = Enable::EHCAL_CELL && true;
+  Enable::EHCAL_CLUSTER = Enable::EHCAL_TOWER && true;
+  Enable::EHCAL_EVAL = Enable::EHCAL_CLUSTER && false;
+
+  Enable::PLUGDOOR = false;
 
   // Other options
-  Enable::GLOBAL_RECO = true;
+  Enable::GLOBAL_RECO = G4TRACKING::DISPLACED_VERTEX; // use reco vertex for global event vertex
   Enable::GLOBAL_FASTSIM = true;
 
-  // Select only one jet reconstruction- they currently use the same
-  // output collections on the node tree!
-  Enable::JETS = true;
-  Enable::JETS_EVAL = Enable::JETS && true;
-
+  // jet reconstruction
   Enable::FWDJETS = true;
   Enable::FWDJETS_EVAL = Enable::FWDJETS && true;
 
@@ -345,6 +353,11 @@ int Fun4All_G4_EICDetector_AnaTutorial(
   Enable::BLACKHOLE = true;
   //Enable::BLACKHOLE_SAVEHITS = false; // turn off saving of bh hits
   //BlackHoleGeometry::visible = true;
+
+  // Enabling the event evaluator?
+  Enable::EVENT_EVAL = true;
+  // EVENT_EVALUATOR::Verbosity = 1;
+  // EVENT_EVALUATOR::EnergyThreshold = 0.05; // GeV
 
   //Enable::USER = true;
 
@@ -386,9 +399,6 @@ int Fun4All_G4_EICDetector_AnaTutorial(
   //------------------
   // Detector Division
   //------------------
-
-  if (Enable::BBC || Enable::BBCFAKE) Bbc_Reco();
-
   if (Enable::CEMC_CELL) CEMC_Cells();
 
   if (Enable::HCALIN_CELL) HCALInner_Cells();
@@ -425,6 +435,9 @@ int Fun4All_G4_EICDetector_AnaTutorial(
   if (Enable::EEMC_TOWER) EEMC_Towers();
   if (Enable::EEMC_CLUSTER) EEMC_Clusters();
 
+  if (Enable::EHCAL_TOWER) EHCAL_Towers();
+  if (Enable::EHCAL_CLUSTER) EHCAL_Clusters();
+
   if (Enable::DSTOUT_COMPRESS) ShowerCompress();
 
   //--------------
@@ -445,12 +458,10 @@ int Fun4All_G4_EICDetector_AnaTutorial(
   {
     Global_FastSim();
   }
-    
+
   //---------
   // Jet reco
   //---------
-
-  if (Enable::JETS) Jet_Reco();
 
   if (Enable::FWDJETS) Jet_FwdReco();
 
@@ -467,6 +478,9 @@ int Fun4All_G4_EICDetector_AnaTutorial(
   //----------------------
   // Simulation evaluation
   //----------------------
+
+  if (Enable::EVENT_EVAL) Event_Eval(outputroot + "_eventtree.root");
+
   if (Enable::TRACKING_EVAL) Tracking_Eval(outputroot + "_g4tracking_eval.root");
 
   if (Enable::CEMC_EVAL) CEMC_Eval(outputroot + "_g4cemc_eval.root");
@@ -481,13 +495,11 @@ int Fun4All_G4_EICDetector_AnaTutorial(
 
   if (Enable::EEMC_EVAL) EEMC_Eval(outputroot + "_g4eemc_eval.root");
 
-  if (Enable::JETS_EVAL) Jet_Eval(outputroot + "_g4jet_eval.root");
-
-  if (Enable::FWDJETS_EVAL) Jet_FwdEval(outputroot + "_g4fwdjet_eval.root");
+  if (Enable::FWDJETS_EVAL) Jet_FwdEval();
 
   if (Enable::USER) UserAnalysisInit();
 
-  AnaTutorial *anaTutorial = new AnaTutorial("anaTutorial", outputroot + "_anaTutorial.root");
+  AnaTutorialECCE *anaTutorial = new AnaTutorialECCE("anaTutorial", outputroot + "_anaTutorial.root");
   anaTutorial->setMinJetPt(3.);
   anaTutorial->Verbosity(0);
   anaTutorial->analyzeTracks(true);
