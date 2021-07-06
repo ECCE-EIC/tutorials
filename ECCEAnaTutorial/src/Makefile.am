@@ -1,7 +1,7 @@
 AUTOMAKE_OPTIONS = foreign
 
 lib_LTLIBRARIES = \
-    libanatutorial.la
+    libanatutorialecce.la
 
 AM_LDFLAGS = \
   -L$(libdir) \
@@ -13,18 +13,18 @@ AM_CPPFLAGS = \
   -I$(ROOTSYS)/include
 
 pkginclude_HEADERS = \
-  AnaTutorial.h
+  AnaTutorialECCE.h
 
 if ! MAKEROOT6
   ROOT5_DICTS = \
-    AnaTutorial_Dict.cc
+    AnaTutorialECCE_Dict.cc
 endif
 
-libanatutorial_la_SOURCES = \
+libanatutorialecce_la_SOURCES = \
   $(ROOT5_DICTS) \
-  AnaTutorial.cc 
+  AnaTutorialECCE.cc 
 
-libanatutorial_la_LDFLAGS = \
+libanatutorialecce_la_LDFLAGS = \
   -L$(libdir) \
   -L$(OFFLINE_MAIN)/lib \
   -lcalo_io \
@@ -42,7 +42,7 @@ noinst_PROGRAMS = \
   testexternals
 
 testexternals_SOURCES = testexternals.C
-testexternals_LDADD = libanatutorial.la
+testexternals_LDADD = libanatutorialecce.la
 
 testexternals.C:
 	echo "//*** this is a generated file. Do not commit, do not edit" > $@

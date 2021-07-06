@@ -1,4 +1,4 @@
-#include "AnaTutorial.h"
+#include "AnaTutorialECCE.h"
 
 /// Cluster/Calorimeter includes
 #include <calobase/RawCluster.h>
@@ -66,7 +66,7 @@ using namespace std;
 /**
  * Constructor of module
  */
-AnaTutorial::AnaTutorial(const std::string &name, const std::string &filename)
+AnaTutorialECCE::AnaTutorialECCE(const std::string &name, const std::string &filename)
   : SubsysReco(name)
   , m_outfilename(filename)
   , m_hm(nullptr)
@@ -86,7 +86,7 @@ AnaTutorial::AnaTutorial(const std::string &name, const std::string &filename)
 /**
  * Destructor of module
  */
-AnaTutorial::~AnaTutorial()
+AnaTutorialECCE::~AnaTutorialECCE()
 {
   delete m_hm;
   delete m_hepmctree;
@@ -98,11 +98,11 @@ AnaTutorial::~AnaTutorial()
 /**
  * Initialize the module and prepare looping over events
  */
-int AnaTutorial::Init(PHCompositeNode *topNode)
+int AnaTutorialECCE::Init(PHCompositeNode *topNode)
 {
   if (Verbosity() > 5)
   {
-    cout << "Beginning Init in AnaTutorial" << endl;
+    cout << "Beginning Init in AnaTutorialECCE" << endl;
   }
  
   m_outfile = new TFile(m_outfilename.c_str(), "RECREATE");
@@ -117,11 +117,11 @@ int AnaTutorial::Init(PHCompositeNode *topNode)
  * Main workhorse function where each event is looped over and 
  * data from each event is collected from the node tree for analysis
  */
-int AnaTutorial::process_event(PHCompositeNode *topNode)
+int AnaTutorialECCE::process_event(PHCompositeNode *topNode)
 {
   if (Verbosity() > 5)
   {
-    cout << "Beginning process_event in AnaTutorial" << endl;
+    cout << "Beginning process_event in AnaTutorialECCE" << endl;
   }
   /// Get the truth information
   if (m_analyzeTruth)
@@ -155,11 +155,11 @@ int AnaTutorial::process_event(PHCompositeNode *topNode)
  * End the module and finish any data collection. Clean up any remaining
  * loose ends
  */
-int AnaTutorial::End(PHCompositeNode *topNode)
+int AnaTutorialECCE::End(PHCompositeNode *topNode)
 {
   if (Verbosity() > 1)
   {
-    cout << "Ending AnaTutorial analysis package" << endl;
+    cout << "Ending AnaTutorialECCE analysis package" << endl;
   }
   
   /// Change to the outfile
@@ -202,7 +202,7 @@ int AnaTutorial::End(PHCompositeNode *topNode)
 
   if (Verbosity() > 1)
   {
-    cout << "Finished AnaTutorial analysis package" << endl;
+    cout << "Finished AnaTutorialECCE analysis package" << endl;
   }
 
   return 0;
@@ -214,7 +214,7 @@ int AnaTutorial::End(PHCompositeNode *topNode)
  * for example, directly comes out of PYTHIA and thus gives you all of
  * the associated parton information
  */
-void AnaTutorial::getHEPMCTruth(PHCompositeNode *topNode)
+void AnaTutorialECCE::getHEPMCTruth(PHCompositeNode *topNode)
 {
   /// Get the node from the node tree
   PHHepMCGenEventMap *hepmceventmap = findNode::getClass<PHHepMCGenEventMap>(topNode, "PHHepMCGenEventMap");
@@ -304,7 +304,7 @@ void AnaTutorial::getHEPMCTruth(PHCompositeNode *topNode)
  * are the stable particles, e.g. there are not any (for example)
  * partons here.
  */
-void AnaTutorial::getPHG4Truth(PHCompositeNode *topNode)
+void AnaTutorialECCE::getPHG4Truth(PHCompositeNode *topNode)
 {
   /// G4 truth particle node
   PHG4TruthInfoContainer *truthinfo = findNode::getClass<PHG4TruthInfoContainer>(topNode, "G4TruthInfo");
@@ -355,7 +355,7 @@ void AnaTutorial::getPHG4Truth(PHCompositeNode *topNode)
  * compares the reconstructed track to its truth track counterpart as determined
  * by the 
  */
-void AnaTutorial::getTracks(PHCompositeNode *topNode)
+void AnaTutorialECCE::getTracks(PHCompositeNode *topNode)
 {
   /// SVTX tracks node
   SvtxTrackMap *trackmap = findNode::getClass<SvtxTrackMap>(topNode, "SvtxTrackMap");
@@ -439,7 +439,7 @@ void AnaTutorial::getTracks(PHCompositeNode *topNode)
 /**
  * Method that gets the truth jets and stores them in a tree
  */
-void AnaTutorial::getTruthJets(PHCompositeNode *topNode)
+void AnaTutorialECCE::getTruthJets(PHCompositeNode *topNode)
 {
   if (Verbosity() > 1)
   {
@@ -573,7 +573,7 @@ void AnaTutorial::getTruthJets(PHCompositeNode *topNode)
 /**
  * Get the reconstructed jets and store them in a tree
  */
-void AnaTutorial::getReconstructedJets(PHCompositeNode *topNode)
+void AnaTutorialECCE::getReconstructedJets(PHCompositeNode *topNode)
 {
   /// Get the reconstructed tower jets
   JetMap *reco_jets = findNode::getClass<JetMap>(topNode, "AntiKt_Tower_r04");
@@ -708,7 +708,7 @@ void AnaTutorial::getReconstructedJets(PHCompositeNode *topNode)
  * other containers can be obtained in a similar way (e.g. clusters from
  * the IHCal, etc.)
  */
-void AnaTutorial::getEMCalClusters(PHCompositeNode *topNode)
+void AnaTutorialECCE::getEMCalClusters(PHCompositeNode *topNode)
 {
   /// Get the raw cluster container
   /// Note: other cluster containers exist as well. Check out the node tree when
@@ -727,7 +727,7 @@ void AnaTutorial::getEMCalClusters(PHCompositeNode *topNode)
   GlobalVertexMap *vertexmap = findNode::getClass<GlobalVertexMap>(topNode, "GlobalVertexMap");
   if (!vertexmap)
   {
-    cout << "AnaTutorial::getEmcalClusters - Fatal Error - GlobalVertexMap node is missing. Please turn on the do_global flag in the main macro in order to reconstruct the global vertex." << endl;
+    cout << "AnaTutorialECCE::getEmcalClusters - Fatal Error - GlobalVertexMap node is missing. Please turn on the do_global flag in the main macro in order to reconstruct the global vertex." << endl;
     assert(vertexmap);  // force quit
 
     return;
@@ -735,7 +735,7 @@ void AnaTutorial::getEMCalClusters(PHCompositeNode *topNode)
 
   if (vertexmap->empty())
   {
-    cout << "AnaTutorial::getEmcalClusters - Fatal Error - GlobalVertexMap node is empty. Please turn on the do_global flag in the main macro in order to reconstruct the global vertex." << endl;
+    cout << "AnaTutorialECCE::getEmcalClusters - Fatal Error - GlobalVertexMap node is empty. Please turn on the do_global flag in the main macro in order to reconstruct the global vertex." << endl;
     return;
   }
 
@@ -788,9 +788,9 @@ void AnaTutorial::getEMCalClusters(PHCompositeNode *topNode)
 
 /**
  * This function puts all of the tree branch assignments in one place so as to not
- * clutter up the AnaTutorial::Init function.
+ * clutter up the AnaTutorialECCE::Init function.
  */
-void AnaTutorial::initializeTrees()
+void AnaTutorialECCE::initializeTrees()
 {
   m_recojettree = new TTree("jettree", "A tree with reconstructed jets");
   m_recojettree->Branch("m_recojetpt", &m_recojetpt, "m_recojetpt/D");
@@ -902,7 +902,7 @@ void AnaTutorial::initializeTrees()
  * are no variables that might not be set before e.g. writing them to the output
  * trees. 
  */
-void AnaTutorial::initializeVariables()
+void AnaTutorialECCE::initializeVariables()
 {
   m_outfile = new TFile();
   m_phi_h = new TH1F();

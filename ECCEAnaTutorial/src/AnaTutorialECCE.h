@@ -1,5 +1,5 @@
-#ifndef ANATUTORIAL_H__
-#define ANATUTORIAL_H__
+#ifndef ANATUTORIALECCE_H__
+#define ANATUTORIALECCE_H__
 
 #include <fun4all/SubsysReco.h>
 
@@ -28,15 +28,15 @@ class SvtxEvalStack;
 class JetEvalStack;
 
 /// Definition of this analysis module class
-class AnaTutorial : public SubsysReco
+class AnaTutorialECCE : public SubsysReco
 {
  public:
   /// Constructor
-  AnaTutorial(const std::string &name = "AnaTutorial",
-              const std::string &fname = "AnaTutorial.root");
+  AnaTutorialECCE(const std::string &name = "AnaTutorialECCE",
+              const std::string &fname = "AnaTutorialECCE.root");
 
   // Destructor
-  virtual ~AnaTutorial();
+  virtual ~AnaTutorialECCE();
 
   /// SubsysReco initialize processing method
   int Init(PHCompositeNode *);
