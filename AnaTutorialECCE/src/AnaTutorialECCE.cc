@@ -337,7 +337,7 @@ void AnaTutorialECCE::getPHG4Truth(PHCompositeNode *topNode)
 
     m_truthpt = sqrt(m_truthpx * m_truthpx + m_truthpy * m_truthpy);
 
-    m_truthphi = atan(m_truthpy / m_truthpx);
+    m_truthphi = atan2(m_truthpy , m_truthpx);
 
     m_trutheta = atanh(m_truthpz / m_truthenergy);
     /// Check for nans
@@ -440,7 +440,7 @@ void AnaTutorialECCE::getTracks(PHCompositeNode *topNode)
     m_truthtracke = truthtrack->get_e();
 
     m_truthtrackpt = sqrt(m_truthtrackpx * m_truthtrackpx + m_truthtrackpy * m_truthtrackpy);
-    m_truthtrackphi = atan(m_truthtrackpy / m_truthtrackpx);
+    m_truthtrackphi = atan2(m_truthtrackpy , m_truthtrackpx);
     m_truthtracketa = atanh(m_truthtrackpz / m_truthtrackp);
     m_truthtrackpid = truthtrack->get_pid();
   
