@@ -19,9 +19,12 @@
 #include <g4vertex/GlobalVertexMap.h>
 #include <trackbase_historic/SvtxTrack.h>
 #include <trackbase_historic/SvtxTrackMap.h>
+#include <trackbase_historic/SvtxTrack_FastSim.h>
 #include <trackbase_historic/SvtxVertex.h>
 #include <trackbase_historic/SvtxVertexMap.h>
-#include <trackbase_historic/SvtxTrack_FastSim.h>
+//PID includes
+#include <eicpidbase/EICPIDParticle.h>
+#include <eicpidbase/EICPIDParticleContainer.h>
 /// Truth evaluation includes
 #include <g4eval/JetEvalStack.h>
 #include <g4eval/SvtxEvalStack.h>
@@ -77,7 +80,7 @@ AnaTutorialECCE::AnaTutorialECCE(const std::string &name, const std::string &fil
   , m_analyzeJets(true)
   , m_analyzeTruth(false)
 {
-  /// Initialize variables and trees so we don't accidentally access 
+  /// Initialize variables and trees so we don't accidentally access
   /// memory that was never allocated
   initializeVariables();
   initializeTrees();
@@ -104,7 +107,7 @@ int AnaTutorialECCE::Init(PHCompositeNode *topNode)
   {
     cout << "Beginning Init in AnaTutorialECCE" << endl;
   }
- 
+
   m_outfile = new TFile(m_outfilename.c_str(), "RECREATE");
 
   m_phi_h = new TH1D("phi_h", ";Counts;#phi [rad]", 50, -6, 6);
@@ -161,7 +164,7 @@ int AnaTutorialECCE::End(PHCompositeNode *topNode)
   {
     cout << "Ending AnaTutorialECCE analysis package" << endl;
   }
-  
+
   /// Change to the outfile
   m_outfile->cd();
 
@@ -192,7 +195,7 @@ int AnaTutorialECCE::End(PHCompositeNode *topNode)
   /// Write out any other histograms
   m_phi_h->Write();
   m_eta_phi_h->Write();
-  
+
   /// Write and close the outfile
   m_outfile->Write();
   m_outfile->Close();
@@ -337,7 +340,7 @@ void AnaTutorialECCE::getPHG4Truth(PHCompositeNode *topNode)
 
     m_truthpt = sqrt(m_truthpx * m_truthpx + m_truthpy * m_truthpy);
 
-    m_truthphi = atan2(m_truthpy , m_truthpx);
+    m_truthphi = atan2(m_truthpy, m_truthpx);
 
     m_trutheta = atanh(m_truthpz / m_truthenergy);
     /// Check for nans
@@ -358,6 +361,12 @@ void AnaTutorialECCE::getTracks(PHCompositeNode *topNode)
 {
   /// Tracks node
   SvtxTrackMap *trackmap = findNode::getClass<SvtxTrackMap>(topNode, "TrackMap");
+  EICPIDParticleContainer *pidcontainer = findNode::getClass<EICPIDParticleContainer>(topNode, "EICPIDParticleMap");
+
+  if (Verbosity() > 1 and pidcontainer == nullptr)
+  {
+    cout << "EICPIDParticleContainer named EICPIDParticleMap does not exist. Skip saving PID info" << endl;
+  }
 
   if (!trackmap)
   {
@@ -403,47 +412,51 @@ void AnaTutorialECCE::getTracks(PHCompositeNode *topNode)
     m_tr_y = track->get_y();
     m_tr_z = track->get_z();
 
-    /// Get truth track info that matches this reconstructed track
-    PHG4Particle *truthtrack = nullptr;
-    
     /// Ensure that the reco track is a fast sim track
-    SvtxTrack_FastSim *temp = dynamic_cast<SvtxTrack_FastSim*>(iter->second);
-    if(!temp)
+    SvtxTrack_FastSim *temp = dynamic_cast<SvtxTrack_FastSim *>(iter->second);
+    if (!temp)
+    {
+      if (Verbosity() > 0)
+        std::cout << "Skipping non fast track sim object..." << std::endl;
+      continue;
+    }
+
+    /// Get truth track info that matches this reconstructed track
+    PHG4Particle *truthtrack = truthinfo->GetParticle(temp->get_truth_track_id());
+    if (truthtrack)
+    {
+      m_truth_is_primary = truthinfo->is_primary(truthtrack);
+
+      m_truthtrackpx = truthtrack->get_px();
+      m_truthtrackpy = truthtrack->get_py();
+      m_truthtrackpz = truthtrack->get_pz();
+      m_truthtrackp = sqrt(m_truthtrackpx * m_truthtrackpx + m_truthtrackpy * m_truthtrackpy + m_truthtrackpz * m_truthtrackpz);
+
+      m_truthtracke = truthtrack->get_e();
+
+      m_truthtrackpt = sqrt(m_truthtrackpx * m_truthtrackpx + m_truthtrackpy * m_truthtrackpy);
+      m_truthtrackphi = atan2(m_truthtrackpy, m_truthtrackpx);
+      m_truthtracketa = atanh(m_truthtrackpz / m_truthtrackp);
+      m_truthtrackpid = truthtrack->get_pid();
+    }
+
+    // match to PIDparticles
+    if (pidcontainer)
+    {
+      // EICPIDParticle are index the same as the tracks
+      const EICPIDParticle *pid_particle =
+          pidcontainer->findEICPIDParticle(track->get_id());
+
+      if (pid_particle)
       {
-	if(Verbosity() > 0)
-	  std::cout << "Skipping non fast track sim object..." << std::endl;
-	continue;
+        // top level log likelihood sums.
+        // More detailed per-detector information also available at  EICPIDParticle::get_LogLikelyhood(EICPIDDefs::PIDCandidate, EICPIDDefs::PIDDetector)
+        m_tr_pion_loglikelihood = pid_particle->get_SumLogLikelyhood(EICPIDDefs::PionCandiate);
+        m_tr_kaon_loglikelihood = pid_particle->get_SumLogLikelyhood(EICPIDDefs::KaonCandiate);
+        m_tr_proton_loglikelihood = pid_particle->get_SumLogLikelyhood(EICPIDDefs::ProtonCandiate);
       }
+    }
 
-    PHG4TruthInfoContainer::Range range = truthinfo->GetPrimaryParticleRange();
-
-    /// Loop over the G4 truth (stable) particles
-    for (PHG4TruthInfoContainer::ConstIterator iter = range.first;
-	 iter != range.second;
-	 ++iter)
-      {
-	/// Get this truth particle
-        PHG4Particle *truth = iter->second;
-	if((truth->get_track_id() - temp->get_truth_track_id()) == 0)
-	  {
-	    truthtrack = truth;
-	  }
-      }
-
-    m_truth_is_primary = truthinfo->is_primary(truthtrack);
-  
-    m_truthtrackpx = truthtrack->get_px();
-    m_truthtrackpy = truthtrack->get_py();
-    m_truthtrackpz = truthtrack->get_pz();
-    m_truthtrackp = sqrt(m_truthtrackpx * m_truthtrackpx + m_truthtrackpy * m_truthtrackpy + m_truthtrackpz * m_truthtrackpz);
-
-    m_truthtracke = truthtrack->get_e();
-
-    m_truthtrackpt = sqrt(m_truthtrackpx * m_truthtrackpx + m_truthtrackpy * m_truthtrackpy);
-    m_truthtrackphi = atan2(m_truthtrackpy , m_truthtrackpx);
-    m_truthtracketa = atanh(m_truthtrackpz / m_truthtrackp);
-    m_truthtrackpid = truthtrack->get_pid();
-  
     m_tracktree->Fill();
   }
 }
@@ -463,11 +476,11 @@ void AnaTutorialECCE::getTruthJets(PHCompositeNode *topNode)
 
   /// Get reco jets associated to truth jets to study e.g. jet efficiencies
   JetMap *reco_jets = findNode::getClass<JetMap>(topNode, "AntiKt_Tower_r05");
-  if(!m_jetEvalStack)
-    {
-      m_jetEvalStack = new JetEvalStack(topNode, "AntiKt_Tower_r05",
-					"AntiKt_Truth_r05");
-    }
+  if (!m_jetEvalStack)
+  {
+    m_jetEvalStack = new JetEvalStack(topNode, "AntiKt_Tower_r05",
+                                      "AntiKt_Truth_r05");
+  }
   m_jetEvalStack->next_event(topNode);
   JetTruthEval *trutheval = m_jetEvalStack->get_truth_eval();
 
@@ -507,7 +520,7 @@ void AnaTutorialECCE::getTruthJets(PHCompositeNode *topNode)
       ntruthconstituents++;
     }
 
-    if(ntruthconstituents < 3)
+    if (ntruthconstituents < 3)
       continue;
     /// Only collect truthjets above the _minjetpt cut
     if (m_truthjetpt < m_minjetpt)
@@ -533,49 +546,47 @@ void AnaTutorialECCE::getTruthJets(PHCompositeNode *topNode)
     float closestjet = 9999;
     /// Iterate over the reconstructed jets
     for (JetMap::Iter recoIter = reco_jets->begin();
-	 recoIter != reco_jets->end();
-	 ++recoIter)
-      {
-	const Jet *recoJet = recoIter->second;
-	m_recojetpt = recoJet->get_pt();
-	if (m_recojetpt < m_minjetpt-m_minjetpt*0.4)
-	  continue;
-		
-	m_recojeteta = recoJet->get_eta();
-	m_recojetphi = recoJet->get_phi();
+         recoIter != reco_jets->end();
+         ++recoIter)
+    {
+      const Jet *recoJet = recoIter->second;
+      m_recojetpt = recoJet->get_pt();
+      if (m_recojetpt < m_minjetpt - m_minjetpt * 0.4)
+        continue;
 
-	if (Verbosity() > 1)
-	  {
-	    cout << "matching by distance jet" << endl;
-	  }
-	
-        float dphi = m_recojetphi - m_truthjetphi;
-        if (dphi > TMath::Pi())
-          dphi -= TMath::Pi() * 2.;
-        if (dphi < -1 * TMath::Pi())
-          dphi += TMath::Pi() * 2.;
-	
-        float deta = m_recojeteta - m_truthjeteta;
-        /// Determine the distance in eta phi space between the reconstructed
-        /// and truth jets
-        m_dR = sqrt(pow(dphi, 2.) + pow(deta, 2.));
-	
-        /// If this truth jet is closer than the previous truth jet, it is
-        /// closer and thus should be considered the truth jet
-        if (m_dR < truth_jets->get_par() && m_dR < closestjet)
-	  {
-	    // Get reco jet characteristics
-	    m_recojetid = recoJet->get_id();
-	    m_recojetpx = recoJet->get_px();
-	    m_recojetpy = recoJet->get_py();
-	    m_recojetpz = recoJet->get_pz();
-	    m_recojetphi = recoJet->get_phi();
-	    m_recojetp = recoJet->get_p();
-	    m_recojetenergy = recoJet->get_e();
-	    
-	  }
+      m_recojeteta = recoJet->get_eta();
+      m_recojetphi = recoJet->get_phi();
+
+      if (Verbosity() > 1)
+      {
+        cout << "matching by distance jet" << endl;
       }
-	
+
+      float dphi = m_recojetphi - m_truthjetphi;
+      if (dphi > TMath::Pi())
+        dphi -= TMath::Pi() * 2.;
+      if (dphi < -1 * TMath::Pi())
+        dphi += TMath::Pi() * 2.;
+
+      float deta = m_recojeteta - m_truthjeteta;
+      /// Determine the distance in eta phi space between the reconstructed
+      /// and truth jets
+      m_dR = sqrt(pow(dphi, 2.) + pow(deta, 2.));
+
+      /// If this truth jet is closer than the previous truth jet, it is
+      /// closer and thus should be considered the truth jet
+      if (m_dR < truth_jets->get_par() && m_dR < closestjet)
+      {
+        // Get reco jet characteristics
+        m_recojetid = recoJet->get_id();
+        m_recojetpx = recoJet->get_px();
+        m_recojetpy = recoJet->get_py();
+        m_recojetpz = recoJet->get_pz();
+        m_recojetphi = recoJet->get_phi();
+        m_recojetp = recoJet->get_p();
+        m_recojetenergy = recoJet->get_e();
+      }
+    }
 
     /// Fill the truthjet tree
     m_truthjettree->Fill();
@@ -592,11 +603,11 @@ void AnaTutorialECCE::getReconstructedJets(PHCompositeNode *topNode)
   /// Get the truth jets
   JetMap *truth_jets = findNode::getClass<JetMap>(topNode, "AntiKt_Truth_r05");
 
-  if(!m_jetEvalStack)
-    {
-      m_jetEvalStack = new JetEvalStack(topNode, "AntiKt_Tower_r05",
-					"AntiKt_Truth_r05");
-    }
+  if (!m_jetEvalStack)
+  {
+    m_jetEvalStack = new JetEvalStack(topNode, "AntiKt_Tower_r05",
+                                      "AntiKt_Truth_r05");
+  }
   m_jetEvalStack->next_event(topNode);
   JetRecoEval *recoeval = m_jetEvalStack->get_reco_eval();
   if (!reco_jets)
@@ -650,7 +661,8 @@ void AnaTutorialECCE::getReconstructedJets(PHCompositeNode *topNode)
     m_truthjetpz = 0;
 
     Jet *truthjet = recoeval->max_truth_jet_by_energy(recoJet);
-    if(truthjet){
+    if (truthjet)
+    {
       m_truthjetid = truthjet->get_id();
       m_truthjetp = truthjet->get_p();
       m_truthjetpx = truthjet->get_px();
@@ -659,12 +671,11 @@ void AnaTutorialECCE::getReconstructedJets(PHCompositeNode *topNode)
       m_truthjeteta = truthjet->get_eta();
       m_truthjetphi = truthjet->get_phi();
       m_truthjetenergy = truthjet->get_e();
-      m_truthjetpt = sqrt(m_truthjetpx * m_truthjetpx 
-			  + m_truthjetpy * m_truthjetpy);
+      m_truthjetpt = sqrt(m_truthjetpx * m_truthjetpx + m_truthjetpy * m_truthjetpy);
     }
 
     /// Check to make sure the truth jet node is available
-    else if(truth_jets)
+    else if (truth_jets)
     {
       /// Match the reconstructed jet to the closest truth jet in delta R space
       /// Iterate over the truth jets
@@ -683,7 +694,7 @@ void AnaTutorialECCE::getReconstructedJets(PHCompositeNode *topNode)
         float thisjetphi = truthJet->get_phi();
 
         float dphi = m_recojetphi - thisjetphi;
-        if (dphi >TMath::Pi())
+        if (dphi > TMath::Pi())
           dphi -= TMath::Pi() * 2.;
         if (dphi < -1. * TMath::Pi())
           dphi += TMath::Pi() * 2.;
@@ -757,15 +768,15 @@ void AnaTutorialECCE::getEMCalClusters(PHCompositeNode *topNode)
 
   /// Trigger emulator
   CaloTriggerInfo *trigger = findNode::getClass<CaloTriggerInfo>(topNode, "CaloTriggerInfo");
-  
+
   /// Can obtain some trigger information if desired
-  if(trigger)
-    {
-      m_E_4x4 = trigger->get_best_EMCal_4x4_E();
-    }
+  if (trigger)
+  {
+    m_E_4x4 = trigger->get_best_EMCal_4x4_E();
+  }
   RawClusterContainer::ConstRange begin_end = clusters->getClusters();
   RawClusterContainer::ConstIterator clusIter;
- 
+
   /// Loop over the EMCal clusters
   for (clusIter = begin_end.first;
        clusIter != begin_end.second;
@@ -861,6 +872,9 @@ void AnaTutorialECCE::initializeTrees()
   m_tracktree->Branch("m_tr_x", &m_tr_x, "m_tr_x/D");
   m_tracktree->Branch("m_tr_y", &m_tr_y, "m_tr_y/D");
   m_tracktree->Branch("m_tr_z", &m_tr_z, "m_tr_z/D");
+  m_tracktree->Branch("m_tr_pion_loglikelihood", &m_tr_pion_loglikelihood, "m_tr_pion_loglikelihood/F");
+  m_tracktree->Branch("m_tr_kaon_loglikelihood", &m_tr_kaon_loglikelihood, "m_tr_kaon_loglikelihood/F");
+  m_tracktree->Branch("m_tr_proton_loglikelihood", &m_tr_proton_loglikelihood, "m_tr_proton_loglikelihood/F");
   m_tracktree->Branch("m_truth_is_primary", &m_truth_is_primary, "m_truth_is_primary/I");
   m_tracktree->Branch("m_truthtrackpx", &m_truthtrackpx, "m_truthtrackpx/D");
   m_tracktree->Branch("m_truthtrackpy", &m_truthtrackpy, "m_truthtrackpy/D");
@@ -954,6 +968,9 @@ void AnaTutorialECCE::initializeVariables()
   m_tr_x = -99;
   m_tr_y = -99;
   m_tr_z = -99;
+  m_tr_pion_loglikelihood = -99;
+  m_tr_kaon_loglikelihood = -99;
+  m_tr_proton_loglikelihood = -99;
   m_truth_is_primary = -99;
   m_truthtrackpx = -99;
   m_truthtrackpy = -99;
@@ -985,5 +1002,3 @@ void AnaTutorialECCE::initializeVariables()
   m_truthjetpz = -99;
   m_dR = -99;
 }
-
-
