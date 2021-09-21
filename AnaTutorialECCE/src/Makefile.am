@@ -32,7 +32,8 @@ libanatutorialecce_la_LDFLAGS = \
   -lg4detectors_io \
   -lphg4hit \
   -lg4dst \
-  -lg4eval
+  -lg4eval \
+  -leicpidbase
 
 
 ################################################
