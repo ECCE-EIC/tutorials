@@ -3,12 +3,7 @@
 
 
 #include <GlobalVariables.C>
-
-#include <DisplayOn.C>
-#include <G4Setup_EICDetector.C>
 #include <G4_Input.C>
-#include <G4_FwdJets.C>
-#include <G4_Global.C>
 
 #include <anatutorialecce/AnaTutorialECCE.h>
 
@@ -21,12 +16,16 @@
 
 
 R__LOAD_LIBRARY(libfun4all.so)
+// Use libg4eicdst for campaign 2 DSTs
+R__LOAD_LIBRARY(libg4eicdst.so)
+// Use libg4dst for campaign 1 DSTs
+//R__LOAD_LIBRARY(libg4dst.so)
 R__LOAD_LIBRARY(libanatutorialecce.so)
 
 
 
 int Fun4All_ReadDST(const int nEvents = 1,
-		    const string& inputFile = "DST_SIDIS_pythia6_ep_18x100highq2_039_0099000_01000.root",
+		    const string& inputFile = "DST_SIDIS_pythia6_ep_18x100lowq2_005_1486000_02000.root",
 		    const string &outputFile = "G4EICDetector.root")
 
 {
