@@ -736,7 +736,7 @@ void AnaTutorialECCE::getEMCalClusters(PHCompositeNode *topNode)
   /// Get the raw cluster container
   /// Note: other cluster containers exist as well. Check out the node tree when
   /// you run a simulation, for example look for the node CLUSTER_EEMC
-  RawClusterContainer *clusters = findNode::getClass<RawClusterContainer>(topNode, "CLUSTER_CEMC");
+  RawClusterContainer *clusters = findNode::getClass<RawClusterContainer>(topNode, "CLUSTER_BECAL");
 
   if (!clusters)
   {
